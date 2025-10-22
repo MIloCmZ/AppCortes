@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    th { background: #f0f0f0; }
+    input[type="text"] { width: 90%; }
+    .btn { margin: 4px; }
+  </style>
+</head>
+<body>
+  <h2>Navegador de Hojas</h2>
+  <input type="text" id="filtro" placeholder="Filtrar por nombre o descripción" oninput="filtrar()">
+  <br><br>
+  <table id="tablaHojas">
+    <thead>
+      <tr>
+        <th>Seleccionar</th>
+        <th>Nombre</th>
+        <th>Descripción</th>
+        <th>Unidad</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <br>
+  <button class="btn" onclick="irAHoja()">Ir a hoja seleccionada</button>
+  <button class="btn" onclick="mostrarHojas(true)">Mostrar seleccionadas</button>
+  <button class="btn" onclick="mostrarHojas(false)">Ocultar seleccionadas</button>
+  <button class="btn" onclick="copiarHojas()">Copiar seleccionadas a nuevo libro</button>
+  <div id="mensaje"></div>
+  <script>
+    let hojas = [];
+    function cargarHojas() {
+      google.script.run.withSuccessHandler(function(data) {
+        hojas = data;
+        mostrarHojasTabla(hojas);
+      }).obtenerHojas();
+    }
+    function mostrarHojasTabla(lista) {
+      const tbody = document.querySelector('#tablaHojas tbody');
+      tbody.innerHTML = '';
+      lista.forEach(function(hoja, i) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input type='checkbox' value='${hoja.nombre}'></td>
+          <td>${hoja.nombre}</td>
+          <td>${hoja.descripcion}</td>
+          <td>${hoja.unidad}</td>
+          <td>${hoja.total}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function filtrar() {
+      const texto = document.getElementById('filtro').value.toLowerCase();
+      const filtradas = hojas.filter(h => h.nombre.toLowerCase().includes(texto) || h.descripcion.toLowerCase().includes(texto));
+      mostrarHojasTabla(filtradas);
+    }
+    function hojasSeleccionadas() {
+      return Array.from(document.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+    }
+    function irAHoja() {
+      const seleccionadas = hojasSeleccionadas();
+      if (seleccionadas.length === 1) {
+        google.script.run.withSuccessHandler(() => mostrarMensaje('Hoja activada')).irAHoja(seleccionadas[0]);
+      } else {
+        mostrarMensaje('Selecciona solo una hoja para ir');
+      }
+    }
+    function mostrarHojas(mostrar) {
+      const seleccionadas = hojasSeleccionadas();
+      if (seleccionadas.length > 0) {
+        google.script.run.withSuccessHandler(() => mostrarMensaje(mostrar ? 'Hojas mostradas' : 'Hojas ocultadas')).mostrarOcultarHojas(seleccionadas, mostrar);
+      } else {
+        mostrarMensaje('Selecciona al menos una hoja');
+      }
+    }
+    function copiarHojas() {
+      const seleccionadas = hojasSeleccionadas();
+      if (seleccionadas.length > 0) {
+        google.script.run.withSuccessHandler(url => mostrarMensaje('Libro creado: <a href="' + url + '" target="_blank">Abrir</a>')).copiarHojas(seleccionadas);
+      } else {
+        mostrarMensaje('Selecciona al menos una hoja');
+      }
+    }
+    function mostrarMensaje(msg) {
+      document.getElementById('mensaje').innerHTML = msg;
+    }
+    cargarHojas();
+  </script>
+</body>
+</html>
