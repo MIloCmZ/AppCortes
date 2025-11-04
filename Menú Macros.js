@@ -6,9 +6,6 @@
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Funciones')
-    .addItem('Crear Pre-Acta', 'CrearPreActa')
-    .addItem('Crear Nueva Acta Parcial', 'NuevaActaParcial')
-    .addItem('Abrir Navegador', 'mostrarNavegadorHojas')
-    .addItem('id carpeta','obtenerIdCarpetaArchivo')
+    .addItem('Crear hoja de la Pre-Acta', 'crearArchivoPreActa')
     .addToUi();
 }
