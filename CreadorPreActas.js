@@ -82,6 +82,21 @@ const FILA_ACTA_FECHA = FILA_ACTA_SUBCONTRA + 2 ;
 const NO_ACTA = 2;
 
 
+// crea un array para almacenar la hojas existentes del archivo y archivos dentro de la carpeta con el mismo nombre base
+const hojasExistentes = [];
+
+// inicializa el array con las hojas existentes del actual archivo y archivos dentro de la carpeta con el mismo nombre base
+// ejemplo "Proyecto unificado" si hay uno que dice proyecto unificado corte No.1, proyecto unificado corte No.2, etc. los agrega al array
+function inicializarHojasExistentes() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+  for (let sheet of sheets) {
+    hojasExistentes.push(sheet.getName());
+  }
+}
+// Llama a la función de inicialización al cargar el script
+inicializarHojasExistentes();
+
 // =============================
 // Utilidades para hojas de cálculo
 // =============================
@@ -90,17 +105,39 @@ function getSheetByName(name) {
   return ss.getSheetByName(name);
 }
 
+// Obtener todas las hojas
+
 function getAllSheets() {
   return SpreadsheetApp.getActiveSpreadsheet().getSheets();
 }
 
-// =============================
-// Abrir Navegador de Hojas (simulación)
-// =============================
-function AbrirNavegadorHojas() {
-  // En Apps Script no hay formularios como en VBA
-  // Puedes crear un diálogo HTML si lo necesitas
-  SpreadsheetApp.getUi().alert('Función NavegadorHojasCorte no migrada.');
+// Obtener todas las hojas del array de hojas existentes
+function getAllExistingSheets() {
+  const sheets = [];
+  for (let name of hojasExistentes) {
+    let sheet = getSheetByName(name);
+    if (sheet) {
+      sheets.push(sheet);
+    }
+  }
+  return sheets;
+}
+
+//Obtener la carpeta donde esta el achivo activo
+
+function obtenerIdCarpetaArchivo() {
+  const archivo = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+  const carpetas = archivo.getParents();
+  
+  if (carpetas.hasNext()) {
+    const carpeta = carpetas.next();
+    const folderId = carpeta.getId();
+      
+    return folderId;
+  } else {
+    SpreadsheetApp.getUi().alert('El archivo está en la raíz de Drive');
+    return null;
+  }
 }
 
 // =============================
@@ -114,7 +151,6 @@ function BuscarHoja(nombreHoja) {
 // Buscar si existen actas para un ítem
 // =============================
 function BuscarActas(baseNombre) {
-  const sheets = getAllSheets();
   for (let sheet of sheets) {
     if (sheet.getName().toUpperCase().startsWith(baseNombre.toUpperCase())) {
       return true;
@@ -127,7 +163,7 @@ function BuscarActas(baseNombre) {
 // Buscar última acta de un ítem
 // =============================
 function UltimaActaDeItem(baseNombre) {
-  const sheets = getAllSheets();
+  const sheets = getAllExistingSheets();
   let maxNum = 0;
   for (let sheet of sheets) {
     if (sheet.getName().startsWith(baseNombre)) {
@@ -146,7 +182,7 @@ function UltimaActaDeItem(baseNombre) {
 // =============================
 function CrearPreActa() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getActiveSheet();
+  const sheet = ss.getAllExistingSheets();
   const cell = sheet.getActiveCell();
   const cRow = cell.getRow();
   const cCol = cell.getColumn();
@@ -188,7 +224,7 @@ function CopiarHoja(NombreHoja, NoActa, PrimeraActa, cRow, cCol) {
   } else {
     hojaOriginal = getSheetByName(BaseNombre + UltActa);
   }
-  // Copiar hoja
+  // Copiar hoja.
   let hojaNueva = hojaOriginal.copyTo(ss).setName(BaseNombre + NoActa);
   EscribirEncabezado(hojaNueva, ss.getActiveSheet(), cRow, cCol, NoActa);
   AjustarTotales(hojaNueva, hojaOriginal, BaseNombre, PrimeraActa, NoActa, cRow, cCol);
@@ -299,7 +335,7 @@ function AjustarTotales(destino, origen, BaseNombre, PrimeraActa, NoActa, cRow, 
 // Mostrar todas las hojas
 // =============================
 function MostrarPreActas() {
-  const sheets = getAllSheets();
+  const sheets = getAllExistingSheets();
   for (let sheet of sheets) {
     sheet.showSheet();
   }
@@ -353,41 +389,3 @@ function NuevaActaParcial() {
   SpreadsheetApp.getUi().alert("Nueva acta parcial creada.");
 
 }
-
-// =============================
-// Renombrar hojas quitando punto
-// =============================
-function RenombrarHojas_QuitarPunto() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = ss.getSheets();
-  const Caracter = ".";
-  const Cambio = "";
-  for (let i = NO_ACTA - 1; i < sheets.length; i++) {
-    let ws = sheets[i];
-    let nombreActual = ws.getName();
-    let parte1 = "", parte2 = "";
-    if (nombreActual.indexOf(" ") > 0) {
-      parte1 = nombreActual.split(" ")[0];
-      parte2 = nombreActual.substring(parte1.length + 1);
-    } else {
-      parte1 = nombreActual;
-      parte2 = "";
-    }
-    if (parte1.indexOf(Caracter) > 0) {
-      parte1 = parte1.replace(Caracter, Cambio);
-      let nuevoNombre = (parte1 + " " + parte2).trim();
-      if (nuevoNombre !== ws.getName()) {
-        try {
-          ws.setName(nuevoNombre);
-        } catch (e) {
-          SpreadsheetApp.getUi().alert("No se pudo renombrar la hoja: " + ws.getName());
-        }
-      }
-    }
-  }
-  SpreadsheetApp.getUi().alert("Renombrado completado.");
-}
-
-// =============================
-// Fin de migración
-// =============================

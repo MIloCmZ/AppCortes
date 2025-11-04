@@ -9,5 +9,6 @@ function onOpen() {
     .addItem('Crear Pre-Acta', 'CrearPreActa')
     .addItem('Crear Nueva Acta Parcial', 'NuevaActaParcial')
     .addItem('Abrir Navegador', 'mostrarNavegadorHojas')
+    .addItem('id carpeta','obtenerIdCarpetaArchivo')
     .addToUi();
 }
