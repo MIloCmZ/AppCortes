@@ -101,26 +101,63 @@ inicializarHojasExistentes();
 // Utilidades para hojas de cálculo
 // =============================
 function getSheetByName(name) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getAllExistingSheets();
   return ss.getSheetByName(name);
 }
 
 // Obtener todas las hojas
 
 function getAllSheets() {
-  return SpreadsheetApp.getActiveSpreadsheet().getSheets();
+  return getAllExistingSheets()
 }
 
 // Obtener todas las hojas del array de hojas existentes
 function getAllExistingSheets() {
-  const sheets = [];
-  for (let name of hojasExistentes) {
-    let sheet = getSheetByName(name);
-    if (sheet) {
-      sheets.push(sheet);
+  try {
+    // Obtener ID de la carpeta
+    const folderId = obtenerIdCarpetaArchivo();
+    if (!folderId) {
+      throw new Error('No se pudo obtener el ID de la carpeta');
     }
+    
+    // Obtener nombre base del archivo actual (sin sufijos)
+    const currentFile = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+    const currentFileName = currentFile.getName();
+    const NameBase = currentFileName.split('.')[0]; // Extraer solo el nombre base
+    
+    // Buscar todos los archivos en la carpeta
+    const folder = DriveApp.getFolderById(folderId);
+    const files = folder.getFiles();
+    const matchingSheets = [];
+    
+    while (files.hasNext()) {
+      const file = files.next();
+      const fileName = file.getName();
+      
+      // Verificar si el archivo tiene el patrón "nombreBase.corteNo.X"
+      if (fileName.startsWith(NameBase + '.')) {
+        matchingSheets.push({
+          name: fileName,
+          id: file.getId(),
+          url: file.getUrl()
+        });
+      }
+    }
+    
+    // Ordenar por número de corte (opcional)
+    matchingSheets.sort((a, b) => {
+      const numA = parseInt(a.name.split('.')[1]) || 0;
+      const numB = parseInt(b.name.split('.')[1]) || 0;
+      return numA - numB;
+    });
+    
+    Logger.log(`Encontrados ${matchingSheets.length} archivos con el nombre base "${NameBase}"`);
+    return matchingSheets;
+    
+  } catch (error) {
+    Logger.log('Error en getAllExistingSheets: ' + error.toString());
+    return [];
   }
-  return sheets;
 }
 
 //Obtener la carpeta donde esta el achivo activo
