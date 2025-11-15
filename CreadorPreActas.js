@@ -48,6 +48,32 @@ getCeldasFormatoPreActa();
 // Funciones
 // =============================  
 
+// funcion para crear una nueva preacta
+function CrearPreActa() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getActiveSheet();
+  const cell = sheet.getActiveCell();
+  const cRow = cell.getRow();
+  const cCol = cell.getColumn();
+  // Suponiendo que "Acta" es la hoja activa
+  const Acta = sheet;
+  const NoActa = Acta.getRange(FILA_PRESENTE_ACTA, COL_PRESENTE_ACTA + 1).getValue();
+  const NombreHoja = sheet.getRange(cRow, 1).getValue() + " " + Acta.getRange(FILA_PRESENTE_ACTA, COL_PRESENTE_ACTA).getValue() + NoActa;
+  const BaseNombre = sheet.getRange(cRow, 1).getValue() + " " + Acta.getRange(FILA_PRESENTE_ACTA, COL_PRESENTE_ACTA).getValue();
+  
+  let idArchivo = BuscarArchivoPreActaActual(NombreHoja);
+
+  if (BuscarHoja(NombreHoja)) {
+    SpreadsheetApp.getUi().alert("La pre-acta " + NombreHoja + " ya existe");
+  } else {
+    if (BuscarActas(BaseNombre)) {
+      SpreadsheetApp.getUi().alert("Se creó " + Acta.getName() + ", ya existen preactas del item.");
+      GenerarSiguienteActa(NombreHoja, NoActa, false, cRow, cCol,idArchivo);
+    } else {
+      CopiarHoja(NombreHoja, NoActa, true, cRow, cCol,idArchivo);
+    }
+  }
+}
 
 // Función para obtener las filas y columnas dinámicamente
 function getCeldasFormatoPreActa() {
@@ -109,9 +135,8 @@ function getCeldasFormatoActa() {
 
 }
 
-
-// optiene el id de la carpeta de la hoja activa
-function obtenerIdCarpeta() {
+// obtiene el id de la carpeta de la hoja activa
+function getIdCarpeta() {
   const archivo = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
   const carpetas = archivo.getParents();
   if (carpetas.hasNext()) {
@@ -139,14 +164,14 @@ function crearArchivoPreActa() {
     const nombreHojaBase = ss.getName() + ".";
     const nombrePreActa = nombreHojaBase + NombreHoja;
     
-    const idCarpeta = obtenerIdCarpeta();
+    const idCarpeta = getIdCarpeta();
     if (!idCarpeta) {
       throw new Error('No se pudo obtener el ID de la carpeta');
     }
     
     const carpeta = DriveApp.getFolderById(idCarpeta);
     const archivos = carpeta.getFilesByName(nombrePreActa);
-    
+
     // Verificar si el archivo ya existe
     if (archivos.hasNext()) {
       const archivoExistente = archivos.next();
@@ -176,7 +201,7 @@ function getPreActasArchivos() {
   sheetAllHojas = []; // reinicia el array global
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const nombreHojaBase = ss.getName() + ".";
-  const idCarpeta = obtenerIdCarpeta();
+  const idCarpeta = getIdCarpeta();
   if (!idCarpeta) {
     throw new Error('No se pudo obtener el ID de la carpeta');
   }
@@ -195,6 +220,28 @@ function getPreActasArchivos() {
   }
   // retorna el array de todas las hojas encontradas 
   return sheetAllHojas;
+}
+
+// Busca el archivo con el mismo nombre base ejemplo MiProyecto de la preacta con numero de corte ejemplo "MiProyecto.Corte No.1"
+// Si lo encuentra retorna el ID del archivo, si no retorna null
+function BuscarArchivoPreActaActual(CorteObra) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const nombreHojaBase = ss.getName() + ".";
+  const idCarpeta = getIdCarpeta();
+  if (!idCarpeta) {
+    throw new Error('No se pudo obtener el ID de la carpeta');
+  }
+  const carpeta = DriveApp.getFolderById(idCarpeta);
+  const archivos = carpeta.getFiles();
+
+  while (archivos.hasNext()) {
+    const archivo = archivos.next();
+    const nombreArchivo = archivo.getName();
+    if (nombreArchivo === nombreHojaBase + CorteObra) {
+      return archivo.getId();
+    }
+  }
+  return null;
 }
 
 // buscar si exsten actas para un item determinado
@@ -235,11 +282,31 @@ function numToCol(n) {
   return s;
 }
 
+// Genera la siguiete aca 
+function GenerarSiguienteActa(NombreHoja, NoActa, PrimeraActa, cRow, cCol,idArchivo) {
+  CopiarHoja(NombreHoja, NoActa, PrimeraActa, cRow, cCol,id,idArchivo);
+}
 
+// Copial la hoja en en el archivo del corte al archivo correspondiente de idArchivo
+function CopiarHoja(NombreHoja, NoActa, PrimeraActa, cRow, cCol,idArchivo) {
+  const ss = getPreActasArchivos();
 
+  let hojaOriginal;
+  let BaseNombre = NombreHoja.substring(0, NombreHoja.length - ("" + NoActa).length);
+  let UltActa = UltimaActaDeItem(BaseNombre);
+  if (UltActa === 0) {
+    hojaOriginal = getSheetByName(NOMBRE_ACTA0);
+  } else {
+    hojaOriginal = getPreActasArchivos().getSheetByName(BaseNombre + UltActa);
+  }
+  // Copiar hoja en el archivo correspondiente
+  const ssDestino = SpreadsheetApp.openById(idArchivo);
+  let hojaNueva = hojaOriginal.copyTo(ssDestino).setName(BaseNombre + NoActa);
+  EscribirEncabezado(hojaNueva, ssDestino.getActiveSheet(), cRow, cCol, NoActa);
+  AjustarTotales(hojaNueva, hojaOriginal, BaseNombre, PrimeraActa, NoActa, cRow, cCol, idArchivo);
+}
 
 // Crear una nueva acta parcial en la hoja activa
-
 function NuevaActaParcial() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const Acta = ss.getActiveSheet();
