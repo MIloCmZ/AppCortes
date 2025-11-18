@@ -1,14 +1,20 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 
-// IDs de tus hojas de cálculo. Puedes obtenerlos de la URL de cada hoja.
-
-  //'1yRN1cWL81nbGNIqlJ_BV8lEaVpmy7TOtXIMf9ej64dGtObqbeHTF9hqP', // Yuldaima hoja de calculo
-  //'169VCvBFwJRLouWVAWYMgh87lOuJggfitZcGlM9QG_Heb4by1txDYkN6e', // Floresta hoja de calculo
-  // '1e8fRGqapp16MWoke2vNoleDfZ5d2xgoPQPHt4zCFHqxw6nL0QMVjoV_t', // Nazareth hoja de calculo
-  // '1hQPbNFadGD6OKDt7ja9gvWJQ3uSa_DlTsW8pwCvGlPKFNmvujCbr4jKy'  // Villa Clara hoja de calculo
 const spreadsheetIds = [
-  '1sa75xQjpMKRfXi-jQbokkKWrNjnK_ONLhGOAWKf224Xhqe0o-vMbOkhq', // Proyecto unificado hoja de calculo
+  // IDs de las hojas de cálculo
+  // Salon comunal Yuldaima
+  //'1yRN1cWL81nbGNIqlJ_BV8lEaVpmy7TOtXIMf9ej64dGtObqbeHTF9hqP',
+  // Salon comunal Floresta
+  //'169VCvBFwJRLouWVAWYMgh87lOuJggfitZcGlM9QG_Heb4by1txDYkN6e',
+  // Salon comunal Nazareth
+  //'1e8fRGqapp16MWoke2vNoleDfZ5d2xgoPQPHt4zCFHqxw6nL0QMVjoV_t',
+  // Salon comunal Villa Clara
+  //'1hQPbNFadGD6OKDt7ja9gvWJQ3uSa_DlTsW8pwCvGlPKFNmvujCbr4jKy',
+  // Salon comunal Santa Teresa
+  '1SDj56SKZsRmSypFFSsGF9wY9uHheTxW2coBlSXpm0m69pWT5aVh5PDbD',
+  // Salon comunal La Libertad
+  '1BSd8o8EurIZXNSfhmvCDkGQn-4HuWXJ9ZVk7HN3msHwWF_8zIS8oExd6'
 ];
 
 function syncToAllSheets() {

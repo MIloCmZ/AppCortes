@@ -68,10 +68,10 @@ function CrearPreActa() {
     SpreadsheetApp.getUi().alert("La Pre-acta " + NombreHoja + " ya existe");
   } else {
     if (BuscarActas(BaseNombre)) {
-      GenerarSiguienteActa(NombreHoja, NoActa, false, cRow, cCol, idArchivo);
+      GenerarSiguienteActa(NombreHoja, NoActa, cRow, cCol, idArchivo);
       SpreadsheetApp.getUi().alert("Se creó " + NombreHoja + ", ya existen preactas del item.");
     } else {
-      CopiarHoja(NombreHoja, NoActa, true, cRow, cCol, idArchivo);
+      CopiarHoja(NombreHoja, NoActa, cRow, cCol, idArchivo);
     }
   }
 }
@@ -274,6 +274,17 @@ function getIdCarpeta() {
   }
 }
 
+// función para obtener url de hoja y ajustar totales
+function getUrlehojas(hoja) {
+  // obtener url de la hoja desde https://docs.google.com/spreadsheets/d/ hasta /edit
+  // ejemplo "https://docs.google.com/spreadsheets/d/1zJXc1Pxe-yh1krWC9HhCLpE-J1j8ObkuU6-9OsHx68k/edit"
+  //obtener esto : 1zJXc1Pxe-yh1krWC9HhCLpE-J1j8ObkuU6-9OsHx68k
+  let urlHoja = hoja.getParent().getUrl();
+  let url = urlHoja.replace('https://docs.google.com/spreadsheets/d/', '');
+  url = url.replace('/edit', '');
+  return url;
+}
+
 // borra todas las imagenes de una hoja
 function BorrarImagenes(destino) {
   const images = destino.getImages();
@@ -361,12 +372,12 @@ function numToCol(n) {
 }
 
 // Genera la siguiete aca 
-function GenerarSiguienteActa(NombreHoja, NoActa, PrimeraActa, cRow, cCol, idArchivo) {
-  CopiarHoja(NombreHoja, NoActa, PrimeraActa, cRow, cCol, idArchivo);
+function GenerarSiguienteActa(NombreHoja, NoActa, cRow, cCol, idArchivo) {
+  CopiarHoja(NombreHoja, NoActa, cRow, cCol, idArchivo);
 }
 
 // Copial la hoja en en el archivo del corte al archivo correspondiente de idArchivo
-function CopiarHoja(NombreHoja, NoActa, PrimeraActa, cRow, cCol, idArchivo) {
+function CopiarHoja(NombreHoja, NoActa, cRow, cCol, idArchivo) {
   if (!idArchivo) {
     throw new Error('El idArchivo es inválido o no se encontró el archivo de destino.');
   }
@@ -387,7 +398,7 @@ function CopiarHoja(NombreHoja, NoActa, PrimeraActa, cRow, cCol, idArchivo) {
   const HojaFuente = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   let hojaNueva = hojaOriginal.copyTo(ssDestino).setName(BaseNombre + NoActa);
   EscribirEncabezado(hojaNueva, HojaFuente, cRow, cCol);
-  AjustarTotales(hojaNueva, hojaOriginal, BaseNombre, PrimeraActa, NoActa, cRow, cCol);
+  AjustarTotales(hojaNueva, hojaOriginal, BaseNombre, NoActa, cRow, cCol);
 }
 
 function EscribirEncabezado(destino, fuente, fRow, fCol) {
@@ -439,7 +450,7 @@ function EscribirEncabezado(destino, fuente, fRow, fCol) {
   //----------------------------------------------
   
   //obtener url de la hoja fuente
-  let urlHojaFuente = fuente.getParent().getUrl();
+  let urlHojaFuente = getUrlehojas(fuente);
   let nombreHojaFuente = fuente.getName();
   const X = '"';
 
@@ -462,10 +473,11 @@ function EscribirEncabezado(destino, fuente, fRow, fCol) {
   destino.getRange(FILA_PREACTA_SUBCONTRA, COL_PREACTA_SUBCONTRA).setFormula("=IMPORTRANGE(" + X + urlHojaFuente + X + "," + X + "'" + nombreHojaFuente + "'!" + colCelda + FILA_ACTA_SUBCONTRA + X + ")");
 }
 
-function AjustarTotales(Destino, Origen, BaseNombre, PrimeraActa, NoActa, cRow, cCol) {
+// Ajustar totales y fórmulas en la hoja destino
+function AjustarTotales(Destino, Origen, BaseNombre, NoActa, cRow, cCol) {
   // obtener url de la hoja destino
-  let UrlHojaDestino = Destino.getParent().getUrl();
-  let UrlHojaOrigen = Origen.getParent().getUrl();
+  let UrlHojaDestino = getUrlehojas(Destino);
+  let UrlHojaOrigen = getUrlehojas(Origen);
   const X = '"';
 
   // Buscar texto y ajustar fórmulas
@@ -473,15 +485,13 @@ function AjustarTotales(Destino, Origen, BaseNombre, PrimeraActa, NoActa, cRow, 
   let coordCol = celdaDestino.getColumn();
   let coordRow = celdaDestino.getRow();
   // insertar fórmula en la celda siguiente si en la celda destino no es FORMATO CORTE
-  if (Destino.getName() !== 'FORMATO CORTE') {
+  if (Origen.getName() !== 'FORMATO CORTE') {
     Destino.getRange(coordRow, coordCol + 1).setFormula("=IMPORTRANGE(" + X + UrlHojaOrigen + X + "," + X + "'" + Origen.getName() + "'!" + numToCol(coordCol + 1) + (coordRow + 1) + X + ")");
     // borra el contenido de las celdas que tienen insertado contenido, en este caso fotos
     let celdaDestinoPhotos = Destino.createTextFinder("Croquis  y/o  Record  Fotográfico").findNext();
     let coordColPhoto = celdaDestinoPhotos.getColumn();
     let coordRowphoto = celdaDestinoPhotos.getRow() + 1;
     Destino.getRange(coordRowphoto, coordColPhoto, 3, 10).clearContent();
-  }
-  if (!PrimeraActa) {
     // borrar imágenes
     BorrarImagenes(Destino);
 
@@ -491,17 +501,17 @@ function AjustarTotales(Destino, Origen, BaseNombre, PrimeraActa, NoActa, cRow, 
     var celda = celdainicio.getNextDataCell(SpreadsheetApp.Direction.UP);
     startRow = celda.getRow();
 
-    SpreadsheetApp.getUi().alert("startRow: " + startRow);
     // Obtener la ultima columna de la hoja, y la celda que contenga "Descripción:"
     let lastCol = Destino.getLastColumn();
     let filaDesp = Destino.createTextFinder("Descripción:").findNext();
     let coordColDesp = filaDesp.getColumn();
     let coordRowDesp = filaDesp.getRow() + 2;
 
+    if (coordRowDesp < coordRow) {
     // Colorear el rango de las filas que contiene datos
     let rango = Destino.getRange(coordRowDesp, coordColDesp, startRow - coordRowDesp + 1, lastCol - coordColDesp + 1);
     rango.setFontColor("#4285F4"); // Color de letra azul
-
+    }
   }
   // Insertar fórmula en la celda activa
   let ss = SpreadsheetApp.getActiveSpreadsheet();
