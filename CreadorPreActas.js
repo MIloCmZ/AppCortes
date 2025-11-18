@@ -65,11 +65,11 @@ function CrearPreActa() {
   let idArchivo = BuscarArchivoPreActaActual(TituloHoja + NoActa);
 
   if (BuscarHoja(NombreHoja)) {
-    SpreadsheetApp.getUi().alert("La pre-acta " + NombreHoja + " ya existe");
+    SpreadsheetApp.getUi().alert("La Pre-acta " + NombreHoja + " ya existe");
   } else {
     if (BuscarActas(BaseNombre)) {
-      SpreadsheetApp.getUi().alert("Se creó " + Acta.getName() + ", ya existen preactas del item.");
       GenerarSiguienteActa(NombreHoja, NoActa, false, cRow, cCol, idArchivo);
+      SpreadsheetApp.getUi().alert("Se creó " + NombreHoja + ", ya existen preactas del item.");
     } else {
       CopiarHoja(NombreHoja, NoActa, true, cRow, cCol, idArchivo);
     }
@@ -386,11 +386,11 @@ function CopiarHoja(NombreHoja, NoActa, PrimeraActa, cRow, cCol, idArchivo) {
   const ssDestino = SpreadsheetApp.openById(idArchivo);
   const HojaFuente = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   let hojaNueva = hojaOriginal.copyTo(ssDestino).setName(BaseNombre + NoActa);
-  EscribirEncabezado(hojaNueva, HojaFuente, cRow, cCol, NoActa);
+  EscribirEncabezado(hojaNueva, HojaFuente, cRow, cCol);
   AjustarTotales(hojaNueva, hojaOriginal, BaseNombre, PrimeraActa, NoActa, cRow, cCol);
 }
 
-function EscribirEncabezado(destino, fuente, fRow, fCol, NoActa) {
+function EscribirEncabezado(destino, fuente, fRow, fCol) {
 
   // Obtener la hoja de formato de acta
   // OPTENER EL NOMBRE DE LA HOJA DESTINO
@@ -484,11 +484,24 @@ function AjustarTotales(Destino, Origen, BaseNombre, PrimeraActa, NoActa, cRow, 
   if (!PrimeraActa) {
     // borrar imágenes
     BorrarImagenes(Destino);
-    // Colorear celdas
-    let LastColumn = Destino.getLastColumn();
-    let lastcell = Destino.getRange(coordRow,LastColumn);
 
-    // Colorear las filas en el rango 17,2 a lastcell que contengan datos dejar para despues
+    // Obtener la fila a partir de coordRow hacia arriba hasta encontrar una celda con datos
+    let startRow = coordRow - 1;
+    let celdainicio = Destino.getRange(startRow, coordCol);
+    var celda = celdainicio.getNextDataCell(SpreadsheetApp.Direction.UP);
+    startRow = celda.getRow();
+
+    SpreadsheetApp.getUi().alert("startRow: " + startRow);
+    // Obtener la ultima columna de la hoja, y la celda que contenga "Descripción:"
+    let lastCol = Destino.getLastColumn();
+    let filaDesp = Destino.createTextFinder("Descripción:").findNext();
+    let coordColDesp = filaDesp.getColumn();
+    let coordRowDesp = filaDesp.getRow() + 2;
+
+    // Colorear el rango de las filas que contiene datos
+    let rango = Destino.getRange(coordRowDesp, coordColDesp, startRow - coordRowDesp + 1, lastCol - coordColDesp + 1);
+    rango.setFontColor("#4285F4"); // Color de letra azul
+
   }
   // Insertar fórmula en la celda activa
   let ss = SpreadsheetApp.getActiveSpreadsheet();
