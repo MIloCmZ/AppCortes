@@ -590,7 +590,7 @@ function AjustarTotalesformulas(Destino, Origen,  BaseNombre, NoActa, cRow, cCol
   let coordRowOrigen = CeldaOrigen.getRow();
   // insertar fórmula en la celda siguiente si en la celda destino no es FORMATO CORTE
   if (Origen.getName() !== 'FORMATO CORTE') {
-    Destino.getRange(coordRowDestino, coordColDestino + 1).setFormula("=IMPORTRANGE(" + X + UrlHojaOrigen + X + "," + X + "'" + Origen.getName() + "'!" + numToCol(coordColOrigen + 1) + (coordRowOrigen + 1) + X + ")");
+    Destino.getRange(coordRowDestino, coordColDestino + 1).setFormula("=IMPORTRANGE(" + X + UrlHojaOrigen + X + "," + X + "'" + Origen.getName() + "'!" + numToCol(coordColOrigen + 1) + (coordRowOrigen) + X + ")");
   }
   // Insertar fórmula en la celda activa
   let ss = SpreadsheetApp.getActiveSpreadsheet();
