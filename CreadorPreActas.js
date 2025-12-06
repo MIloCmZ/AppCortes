@@ -37,8 +37,6 @@ let FILA_ACTA_CORTENo;
 let FILA_ACTA_FECHA;
 let NO_ACTA;
 
-// Array global para almacenar las hojas de los archivos creados
-let sheetAllHojas= [];
 
 // Inicializar las variables globales al cargar el script 
 getCeldasFormatoActa();
@@ -48,6 +46,47 @@ getCeldasFormatoPreActa();
 // Funciones principales
 // =============================  
 
+// funcion de actualizar formulas de preacta, actualiza las formulas celdas de la columna activa
+function ActualizarFormulasPreActa() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getActiveSheet();
+  const col = sheet.getActiveCell().getColumn();
+  const fila1 = sheet.createTextFinder("Presente acta:").findNext().getRow()+4;
+  const fila2 = sheet.createTextFinder("VALOR TOTAL OBRA EJECUTADA").findNext().getRow()-6;
+  const FILA_ACTA_SUBCONTRA = sheet.createTextFinder("SUBCONTRATISTA:").findNext().getRow();
+  // Actualiza las fórmulas en la columna activa
+  const rango = sheet.getRange(fila1, col, fila2 - fila1 + 1);
+  const Acta = sheet;
+  const TituloHoja = Acta.getRange(FILA_PRESENTE_ACTA, COL_PRESENTE_ACTA).getValue();
+  const NoActa = Acta.getRange(FILA_PRESENTE_ACTA, COL_PRESENTE_ACTA + 1).getValue();
+
+  let idArchivo = BuscarArchivoPreActaActual(TituloHoja + NoActa);
+  const hojasPreActa = getPreActasArchivos();
+
+  for (let i = 0; i < rango.getNumRows(); i++) {
+    const cell = rango.getCell(i + 1, 1);
+    // Verificar si la celda no está vacía
+    if (cell.getValue() > 0) {
+      const cRow = cell.getRow();
+      const cCol = cell.getColumn();
+      const Ftilulo = sheet.getRange(FILA_ACTA_SUBCONTRA + 1, cCol).getValue();
+      const NombreHoja = sheet.getRange(cRow, 1).getValue() + " " + Ftilulo;
+      const BaseNombre = sheet.getRange(cRow, 1).getValue() + " " + TituloHoja;
+      const Destino = ObtenerHoja(hojasPreActa, NombreHoja);
+      const AnteriorActa = AnteriorActaDeItem(hojasPreActa,BaseNombre);
+      let hojaOriginal = getSheetByName(NOMBRE_ACTA0);
+      if (AnteriorActa !== null) {
+        hojaOriginal = hojasPreActa.find(h => h.getName() === (BaseNombre + AnteriorActa));
+        if (!hojaOriginal) {
+          throw new Error('No se encontró la hoja original para copiar.');
+        }
+      }
+      EscribirEncabezado(Destino, sheet, cRow, cCol);
+      AjustarTotalesformulas(Destino, hojaOriginal, BaseNombre, NoActa, cRow, cCol);
+    }
+  }
+}
+
 // funcion para crear una nueva preacta
 function CrearPreActa() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -55,7 +94,6 @@ function CrearPreActa() {
   const cell = sheet.getActiveCell();
   const cRow = cell.getRow();
   const cCol = cell.getColumn();
-  // Suponiendo que "Acta" es la hoja activa
   const Acta = sheet;
   const TituloHoja = Acta.getRange(FILA_PRESENTE_ACTA, COL_PRESENTE_ACTA).getValue();
   const NoActa = Acta.getRange(FILA_PRESENTE_ACTA, COL_PRESENTE_ACTA + 1).getValue();
@@ -64,14 +102,16 @@ function CrearPreActa() {
 
   let idArchivo = BuscarArchivoPreActaActual(TituloHoja + NoActa);
 
-  if (BuscarHoja(NombreHoja)) {
+  const hojasPreActa = getPreActasArchivos();
+
+  if (BuscarHoja(hojasPreActa, NombreHoja)) {
     SpreadsheetApp.getUi().alert("La Pre-acta " + NombreHoja + " ya existe");
   } else {
-    if (BuscarActas(BaseNombre)) {
-      GenerarSiguienteActa(NombreHoja, NoActa, cRow, cCol, idArchivo);
+    if (BuscarActas(hojasPreActa, BaseNombre)) {
+      GenerarSiguienteActa(hojasPreActa, NombreHoja, NoActa, cRow, cCol, idArchivo);
       SpreadsheetApp.getUi().alert("Se creó " + NombreHoja + ", ya existen preactas del item.");
     } else {
-      CopiarHoja(NombreHoja, NoActa, cRow, cCol, idArchivo);
+      CopiarHoja(hojasPreActa, NombreHoja, NoActa, cRow, cCol, idArchivo);
     }
   }
 }
@@ -118,19 +158,23 @@ function NuevaActaParcial() {
 // funciones de busqueda
 // =============================
 
+//busca hoja en el array global de hojas si existe retorna la hoja mediante el nombre de la hoja
+function ObtenerHoja(sheets, nombreHoja) {
+  return sheets.find(h => h.getName() === nombreHoja) || null;
+}
+
 // buscar hoja en el array global de hojas si existe retorna distinto de null mediante el nombre de la hoja
-function BuscarHoja(nombreHoja) {
-  const sheets = getPreActasArchivos();
-  for (let sheet of sheets) {
-    if (sheet.getName() === nombreHoja) {
-      return true;
-    }
-  }
-  return false;
-} 
+function BuscarHoja(sheets, nombreHoja) {
+  return hojaExiste = sheets.some(h => h.getName() === nombreHoja);
+}
+
+// buscar si exsten actas para un item determinado
+function BuscarActas(hojasPreActa ,BaseNombre) {
+ return actaExiste = hojasPreActa.some(h => h.getName().toUpperCase().startsWith(BaseNombre.toUpperCase()));
+}
 
 // Busca el archivo con el mismo nombre base ejemplo MiProyecto de la preacta con numero de corte ejemplo "MiProyecto.Corte No.1"
-
+// incluyendo las actas las hojas del archivo principal
 function BuscarArchivoPreActaActual(CorteObra) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const nombreHojaBase = ss.getName() + ".";
@@ -152,16 +196,6 @@ function BuscarArchivoPreActaActual(CorteObra) {
   return BuscarArchivoPreActaActual(CorteObra);
 }
 
-// buscar si exsten actas para un item determinado
-function BuscarActas(baseNombre) {
-  const sheets = getPreActasArchivos();
-  for (let sheet of sheets) {
-    if (sheet.getName().toUpperCase().startsWith(baseNombre.toUpperCase())) {
-      return true;
-    }
-  }
-  return false;
-}
 // =============================
 // funciones de obtención de filas y columnas dinámicas
 // =============================
@@ -232,9 +266,11 @@ function getCeldasFormatoActa() {
 
 // crea un array con los hojas de los archivos con el nombre base del archivo principal
 function getPreActasArchivos() {
-  sheetAllHojas = []; // reinicia el array global
+
+  // inicializa el array global
+  sheetAllHojas = [];
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const nombreHojaBase = ss.getName() + ".";
+  const nombreHojaBase = ss.getName();
   const idCarpeta = getIdCarpeta();
   if (!idCarpeta) {
     throw new Error('No se pudo obtener el ID de la carpeta');
@@ -248,11 +284,10 @@ function getPreActasArchivos() {
     if (nombreArchivo.startsWith(nombreHojaBase)) {
       const idArchivo = archivo.getId();
       const ssArchivo = SpreadsheetApp.openById(idArchivo);
-      const hojas = ssArchivo.getSheets(); // retorna las hojas del archivo
-      sheetAllHojas.push(...hojas); // agrega las hojas al array global
+      const hojas = ssArchivo.getSheets();
+      sheetAllHojas.push(...hojas);
     }
   }
-  // retorna el array de todas las hojas encontradas 
   return sheetAllHojas;
 }
 
@@ -345,8 +380,7 @@ function CrearArchivoPreActa() {
 }
 
 // obtener el número de la última acta creada para un item determinado
-function UltimaActaDeItem(baseNombre) {
-  const sheets = getPreActasArchivos();
+function UltimaActaDeItem(sheets, baseNombre) {
   let maxNum = 0;
   for (let sheet of sheets) {
     if (sheet.getName().startsWith(baseNombre)) {
@@ -358,6 +392,22 @@ function UltimaActaDeItem(baseNombre) {
     }
   }
   return maxNum;
+}
+
+// obtener el número de la acta anterior a la última creada para un item determinado, aunque los números no sean consecutivos
+function AnteriorActaDeItem(sheets, baseNombre) {
+  let numeros = [];
+  for (let sheet of sheets) {
+    if (sheet.getName().startsWith(baseNombre)) {
+      let numStr = sheet.getName().replace(baseNombre, "");
+      if (!isNaN(numStr) && numStr !== "") {
+        numeros.push(parseInt(numStr, 10));
+      }
+    }
+  }
+  numeros = numeros.filter(n => !isNaN(n));
+  numeros.sort((a, b) => b - a); // ordenar de mayor a menor
+  return numeros.length >= 2 ? numeros[1] : null; // Retorna el penúltimo o null si no existe
 }
 
 // Convierte un número de columna a letra de columna (1 -> A, 27 -> AA)
@@ -372,19 +422,19 @@ function numToCol(n) {
 }
 
 // Genera la siguiete aca 
-function GenerarSiguienteActa(NombreHoja, NoActa, cRow, cCol, idArchivo) {
-  CopiarHoja(NombreHoja, NoActa, cRow, cCol, idArchivo);
+function GenerarSiguienteActa(hojasPreActa, NombreHoja, NoActa, cRow, cCol, idArchivo) {
+  CopiarHoja(hojasPreActa, NombreHoja, NoActa, cRow, cCol, idArchivo);
 }
 
 // Copial la hoja en en el archivo del corte al archivo correspondiente de idArchivo
-function CopiarHoja(NombreHoja, NoActa, cRow, cCol, idArchivo) {
+function CopiarHoja(hojasPreActa, NombreHoja, NoActa, cRow, cCol, idArchivo) {
   if (!idArchivo) {
     throw new Error('El idArchivo es inválido o no se encontró el archivo de destino.');
   }
-  const hojas = getPreActasArchivos();
+  const hojas = hojasPreActa
   let hojaOriginal;
   let BaseNombre = NombreHoja.substring(0, NombreHoja.length - ("" + NoActa).length);
-  let UltActa = UltimaActaDeItem(BaseNombre);
+  let UltActa = UltimaActaDeItem(hojas, BaseNombre);
   if (UltActa === 0) {
     hojaOriginal = getSheetByName(NOMBRE_ACTA0);
   } else {
@@ -482,11 +532,15 @@ function AjustarTotales(Destino, Origen, BaseNombre, NoActa, cRow, cCol) {
 
   // Buscar texto y ajustar fórmulas
   let celdaDestino = Destino.createTextFinder("Menos (-) Cantidad Pagada Actas Anteriores").findNext();
-  let coordCol = celdaDestino.getColumn();
-  let coordRow = celdaDestino.getRow();
+  let coordColDestino = celdaDestino.getColumn();
+  let coordRowDestino = celdaDestino.getRow();
+
+  let CeldaOrigen = Origen.createTextFinder("Menos (-) Cantidad Pagada Actas Anteriores").findNext();
+  let coordColOrigen = CeldaOrigen.getColumn();
+  let coordRowOrigen = CeldaOrigen.getRow();
   // insertar fórmula en la celda siguiente si en la celda destino no es FORMATO CORTE
   if (Origen.getName() !== 'FORMATO CORTE') {
-    Destino.getRange(coordRow, coordCol + 1).setFormula("=IMPORTRANGE(" + X + UrlHojaOrigen + X + "," + X + "'" + Origen.getName() + "'!" + numToCol(coordCol + 1) + (coordRow + 1) + X + ")");
+    Destino.getRange(coordRowDestino, coordColDestino + 1).setFormula("=IMPORTRANGE(" + X + UrlHojaOrigen + X + "," + X + "'" + Origen.getName() + "'!" + numToCol(coordColOrigen + 1) + (coordRowOrigen + 1) + X + ")");
     // borra el contenido de las celdas que tienen insertado contenido, en este caso fotos
     let celdaDestinoPhotos = Destino.createTextFinder("Croquis  y/o  Record  Fotográfico").findNext();
     let coordColPhoto = celdaDestinoPhotos.getColumn();
@@ -496,8 +550,8 @@ function AjustarTotales(Destino, Origen, BaseNombre, NoActa, cRow, cCol) {
     BorrarImagenes(Destino);
 
     // Obtener la fila a partir de coordRow hacia arriba hasta encontrar una celda con datos
-    let startRow = coordRow - 1;
-    let celdainicio = Destino.getRange(startRow, coordCol);
+    let startRow = coordRowDestino - 1;
+    let celdainicio = Destino.getRange(startRow, coordColDestino);
     var celda = celdainicio.getNextDataCell(SpreadsheetApp.Direction.UP);
     startRow = celda.getRow();
 
@@ -507,7 +561,7 @@ function AjustarTotales(Destino, Origen, BaseNombre, NoActa, cRow, cCol) {
     let coordColDesp = filaDesp.getColumn();
     let coordRowDesp = filaDesp.getRow() + 2;
 
-    if (coordRowDesp < coordRow) {
+    if (coordRowDesp < coordRowDestino) {
     // Colorear el rango de las filas que contiene datos
     let rango = Destino.getRange(coordRowDesp, coordColDesp, startRow - coordRowDesp + 1, lastCol - coordColDesp + 1);
     rango.setFontColor("#4285F4"); // Color de letra azul
@@ -516,6 +570,31 @@ function AjustarTotales(Destino, Origen, BaseNombre, NoActa, cRow, cCol) {
   // Insertar fórmula en la celda activa
   let ss = SpreadsheetApp.getActiveSpreadsheet();
   let Acta = ss.getActiveSheet();
-  Acta.getRange(cRow, cCol).setFormula("=IMPORTRANGE(" + X + UrlHojaDestino + X + "," + X + "'" + BaseNombre + NoActa + "'!" + numToCol(coordCol + 1) + (coordRow + 2) + X + ")");
+  Acta.getRange(cRow, cCol).setFormula("=IMPORTRANGE(" + X + UrlHojaDestino + X + "," + X + "'" + BaseNombre + NoActa + "'!" + numToCol(coordColDestino + 1) + (coordRowDestino + 2) + X + ")");
+  Acta.getRange(cRow, cCol).setNumberFormat("0.00");
+}
+
+function AjustarTotalesformulas(Destino, Origen,  BaseNombre, NoActa, cRow, cCol) {
+  // obtener url de la hoja destino
+  let UrlHojaDestino = getUrlehojas(Destino);
+  let UrlHojaOrigen = getUrlehojas(Origen);
+    const X = '"';
+
+  // Buscar texto y ajustar fórmulas
+  let celdaDestino = Destino.createTextFinder("Menos (-) Cantidad Pagada Actas Anteriores").findNext();
+  let coordColDestino = celdaDestino.getColumn();
+  let coordRowDestino = celdaDestino.getRow();
+
+  let CeldaOrigen = Origen.createTextFinder("Subtotal Cantidad Acumulada Presente Acta").findNext();
+  let coordColOrigen = CeldaOrigen.getColumn();
+  let coordRowOrigen = CeldaOrigen.getRow();
+  // insertar fórmula en la celda siguiente si en la celda destino no es FORMATO CORTE
+  if (Origen.getName() !== 'FORMATO CORTE') {
+    Destino.getRange(coordRowDestino, coordColDestino + 1).setFormula("=IMPORTRANGE(" + X + UrlHojaOrigen + X + "," + X + "'" + Origen.getName() + "'!" + numToCol(coordColOrigen + 1) + (coordRowOrigen + 1) + X + ")");
+  }
+  // Insertar fórmula en la celda activa
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let Acta = ss.getActiveSheet();
+  Acta.getRange(cRow, cCol).setFormula("=IMPORTRANGE(" + X + UrlHojaDestino + X + "," + X + "'" + BaseNombre + NoActa + "'!" + numToCol(coordColDestino + 1) + (coordRowDestino + 2) + X + ")");
   Acta.getRange(cRow, cCol).setNumberFormat("0.00");
 }

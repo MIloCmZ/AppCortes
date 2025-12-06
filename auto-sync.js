@@ -2,19 +2,27 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 
 const spreadsheetIds = [
+  // hoja prueba
+  //'1sa75xQjpMKRfXi-jQbokkKWrNjnK_ONLhGOAWKf224Xhqe0o-vMbOkhq'
   // IDs de las hojas de cálculo
   // Salon comunal Yuldaima
-  //'1yRN1cWL81nbGNIqlJ_BV8lEaVpmy7TOtXIMf9ej64dGtObqbeHTF9hqP',
+  '1yRN1cWL81nbGNIqlJ_BV8lEaVpmy7TOtXIMf9ej64dGtObqbeHTF9hqP',
   // Salon comunal Floresta
-  //'169VCvBFwJRLouWVAWYMgh87lOuJggfitZcGlM9QG_Heb4by1txDYkN6e',
+  '169VCvBFwJRLouWVAWYMgh87lOuJggfitZcGlM9QG_Heb4by1txDYkN6e',
   // Salon comunal Nazareth
-  //'1e8fRGqapp16MWoke2vNoleDfZ5d2xgoPQPHt4zCFHqxw6nL0QMVjoV_t',
+  '1e8fRGqapp16MWoke2vNoleDfZ5d2xgoPQPHt4zCFHqxw6nL0QMVjoV_t',
   // Salon comunal Villa Clara
-  //'1hQPbNFadGD6OKDt7ja9gvWJQ3uSa_DlTsW8pwCvGlPKFNmvujCbr4jKy',
+  '1hQPbNFadGD6OKDt7ja9gvWJQ3uSa_DlTsW8pwCvGlPKFNmvujCbr4jKy',
   // Salon comunal Santa Teresa
   '1SDj56SKZsRmSypFFSsGF9wY9uHheTxW2coBlSXpm0m69pWT5aVh5PDbD',
   // Salon comunal La Libertad
-  '1BSd8o8EurIZXNSfhmvCDkGQn-4HuWXJ9ZVk7HN3msHwWF_8zIS8oExd6'
+  '1BSd8o8EurIZXNSfhmvCDkGQn-4HuWXJ9ZVk7HN3msHwWF_8zIS8oExd6',
+  // Salon comunal Boyaca
+  '1yBKXNgr5nmy2h14pBRzNrkptx7YxP77TdY77WtqPTjL4DV3RXDuMoJEs',
+  // Salon comunal Simon Bolivar
+  '1sdnQRC4nmhjQRCO3Ad3yIyIZCSqX7dUmtfHvXMH9KLyQgMcpqdZahHya',
+  // Salon comunal Murillo
+  '1dGSKDqBjlsUtpNRLLPm0LQAchz_NlId93IFdGprusu9pSf_0l8m6Bkjr'
 ];
 
 function syncToAllSheets() {
