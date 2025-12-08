@@ -46,6 +46,85 @@ getCeldasFormatoPreActa();
 // Funciones principales
 // =============================  
 
+// funcion para ocultar filas de la preacta nombre de función OcultarFilasPreActa
+// oculta las filas en blanco de la columna activa
+function OcultarFilasPreActa() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getActiveSheet();
+  const col = sheet.getActiveCell().getColumn();
+  const fila1 = sheet.createTextFinder("Presente acta:").findNext().getRow()+4;
+  const fila2 = sheet.createTextFinder("VALOR TOTAL OBRA EJECUTADA").findNext().getRow()-6;
+  const rango = sheet.getRange(fila1, col, fila2 - fila1 + 1);
+  var filacap =0;
+  var subtot =0;
+  var FCapVacio = false;
+  // oculta la fila si la celda esta vacia y que en la columna C no este vacia
+  // recorre el rango de celdas y guarda en un array las filas a ocultar para luego ocultarlas
+  const filasAOcultar = [];
+  // realiza recorrido en el rango y verifica las celdas del capitulo
+  for (let i = 0; i < rango.getNumRows(); i++) {
+    const cell = rango.getCell(i + 1, 1);
+    const Fcap = sheet.getRange(fila1 + i, 3);
+    const Fsubtotal = sheet.getRange(fila1 + i, 2);
+
+    if (Fcap.getValue() === "" &&
+        Fsubtotal.getValue() !== "Subtotal" && 
+        Fsubtotal.getValue() !== "") {
+      filacap = i;
+    }
+    if (Fsubtotal.getValue() === "Subtotal" && FCapVacio){
+      subtot = i;
+      var datos = false;
+      for (let j = filacap; j <= subtot; j++) {
+        const filacaptitulo = rango.getCell(j + 1, 1);
+        if (filacaptitulo.getValue() > 0 ) {
+          datos = true;
+        }
+      }
+      if (!datos) {
+        filasAOcultar.push(fila1 + filacap);
+        filasAOcultar.push(fila1 + subtot);
+        FCapVacio = false;
+      }
+    }
+    if (cell.getValue() === "" && Fcap.getValue() !== "") {
+      filasAOcultar.push(fila1 + i);
+      FCapVacio = true;
+    }
+  }
+  // ordena el array de filas a ocultar basado en su valor de indice
+  filasAOcultar.sort((a, b) => a - b);
+  
+  // Optimización: agrupar filas consecutivas y ocultar en bloque
+  if (filasAOcultar.length > 0) {
+    let start = filasAOcultar[0];
+    let count = 1;
+    for (let i = 1; i < filasAOcultar.length; i++) {
+      if (filasAOcultar[i] === filasAOcultar[i - 1] + 1) {
+        count++;
+      } else {
+        sheet.hideRows(start, count);
+        start = filasAOcultar[i];
+        count = 1;
+      }
+    }
+    // Oculta el último bloque
+    sheet.hideRows(start, count);
+  }
+}
+
+// función de desocultar filas de la preacta nombre de función DesocultarFilasPreActa
+function MostrarFilasPreActa() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getActiveSheet();
+  const col = sheet.getActiveCell().getColumn();
+  const fila1 = sheet.createTextFinder("Presente acta:").findNext().getRow()+4;
+  const fila2 = sheet.createTextFinder("VALOR TOTAL OBRA EJECUTADA").findNext().getRow()-6;
+  
+  // Muestra las filas que estaban ocultas
+  sheet.showRows(fila1, fila2 - fila1 + 1);
+}
+
 // funcion de actualizar formulas de preacta, actualiza las formulas celdas de la columna activa
 function ActualizarFormulasPreActa() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
